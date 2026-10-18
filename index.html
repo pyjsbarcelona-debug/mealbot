@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Restoran</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+          rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #0f172a);
+            --text-color: var(--tg-theme-text-color, #f8fafc);
+            --hint-color: var(--tg-theme-hint-color, #94a3b8);
+            --primary-color: var(--tg-theme-button-color, #6366f1);
+            --primary-text: var(--tg-theme-button-text-color, #ffffff);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 16px;
+            padding-bottom: 90px;
+        }
+
+        h2 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .menu-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .menu-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .menu-item:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .item-info .title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .item-info .price {
+            font-size: 14px;
+            color: var(--hint-color);
+            font-weight: 500;
+        }
+
+        .counter {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 4px;
+            gap: 10px;
+        }
+
+        .btn {
+            background: var(--primary-color);
+            color: var(--primary-text);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s ease, opacity 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.9);
+        }
+
+        .count-text {
+            font-size: 15px;
+            font-weight: 600;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .cart-summary {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .cart-info span {
+            display: block;
+            font-size: 12px;
+            color: var(--hint-color);
+        }
+
+        .cart-info strong {
+            font-size: 18px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+<h2>✨ Restoran Menyusi</h2>
+<div class="menu-container" id="menu"></div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    const menu = {
+        "Osh": 35000,
+        "Shashlik": 20000,
+        "Manti": 8000,
+        "Lagm'on": 30000,
+        "Choy": 5000
+    };
+
+    const cart = {};
+
+    function renderMenu() {
+        const menuContainer = document.getElementById('menu');
+        menuContainer.innerHTML = '';
+
+        for (let [item, price] of Object.entries(menu)) {
+            let count = cart[item] || 0;
+            menuContainer.innerHTML += `
+                <div class="menu-item">
+                    <div class="item-info">
+                        <div class="title">${item}</div>
+                        <div class="price">${price.toLocaleString()} so'm</div>
+                    </div>
+                    <div class="counter">
+                        <button class="btn" onclick="updateCart('${item}', -1)">-</button>
+                        <span class="count-text">${count}</span>
+                        <button class="btn" onclick="updateCart('${item}', 1)">+</button>
+                    </div>
+                </div>`;
+        }
+        calculateTotal();
+    }
+
+    function updateCart(item, change) {
+        cart[item] = (cart[item] || 0) + change;
+        if (cart[item] <= 0) delete cart[item];
+        renderMenu();
+    }
+
+    function calculateTotal() {
+        let total = 0;
+        for (let [item, count] of Object.entries(cart)) {
+            total += menu[item] * count;
+        }
+
+        if (total > 0) {
+            tg.MainButton.setText(`BUYURTMA BERISH • ${total.toLocaleString()} SO'M`);
+            tg.MainButton.show();
+        } else {
+            tg.MainButton.hide();
+        }
+    }
+
+    tg.MainButton.onClick(() => {
+        const data = {
+            cart: cart,
+            total: Object.entries(cart).reduce((sum, [i, c]) => sum + menu[i] * c, 0)
+        };
+        tg.sendData(JSON.stringify(data));
+    });
+
+    renderMenu();
+</script>
+</body>
+</html>
