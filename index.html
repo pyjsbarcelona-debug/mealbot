@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restoran Menyusi</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: var(--tg-theme-bg-color, #ffffff); color: var(--tg-theme-text-color, #000000); padding: 15px; margin: 0; }
+        .menu-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .btn { background: #3390ec; color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+        .counter { display: flex; align-items: center; gap: 8px; }
+        #cart { margin-top: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+<h2>🍽 Restoran Menyusi</h2>
+<div id="menu"></div>
+<div id="cart">Jami: <span id="total">0</span> so'm</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    const menu = {
+        "Osh": 35000,
+        "Shashlik": 20000,
+        "Manti": 8000,
+        "Lagm'on": 30000,
+        "Choy": 5000
+    };
+
+    const cart = {};
+
+    function renderMenu() {
+        const menuContainer = document.getElementById('menu');
+        menuContainer.innerHTML = '';
+        for (let [item, price] of Object.entries(menu)) {
+            let count = cart[item] || 0;
+            menuContainer.innerHTML += `
+                <div class="menu-item">
+                    <div>
+                        <strong>${item}</strong><br>
+                        <small>${price.toLocaleString()} so'm</small>
+                    </div>
+                    <div class="counter">
+                        <button class="btn" onclick="updateCart('${item}', -1)">-</button>
+                        <span>${count}</span>
+                        <button class="btn" onclick="updateCart('${item}', 1)">+</button>
+                    </div>
+                </div>`;
+        }
+        calculateTotal();
+    }
+
+    function updateCart(item, change) {
+        cart[item] = (cart[item] || 0) + change;
+        if (cart[item] <= 0) delete cart[item];
+        renderMenu();
+    }
+
+    function calculateTotal() {
+        let total = 0;
+        for (let [item, count] of Object.entries(cart)) {
+            total += menu[item] * count;
+        }
+        document.getElementById('total').innerText = total.toLocaleString();
+
+        if (total > 0) {
+            tg.MainButton.setText(`BUYURTMA BERISH (${total.toLocaleString()} SO'M)`);
+            tg.MainButton.show();
+        } else {
+            tg.MainButton.hide();
+        }
+    }
+
+    tg.MainButton.onClick(() => {
+        const data = {
+            cart: cart,
+            total: Object.entries(cart).reduce((sum, [i, c]) => sum + menu[i] * c, 0)
+        };
+        tg.sendData(JSON.stringify(data));
+    });
+
+    renderMenu();
+</script>
+</body>
+</html>
